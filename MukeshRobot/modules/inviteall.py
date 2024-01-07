@@ -5,8 +5,6 @@ from pyrogram.types import Message
 from MukeshRobot import pbot
 from pyrogram.errors.exceptions.flood_420 import FloodWait
 
-from MukeshRobot.modules.help import add_command_help
-
 
 @Client.on_message(
     filters.command(["invite"], ".") & (filters.me | filters.user(SUDO_USER))
