@@ -2,7 +2,7 @@ import asyncio
 from pyrogram import Client, filters
 from pyrogram.enums import ChatType, UserStatus
 from pyrogram.types import Message
-from MukeshRobot import SUDO_USER
+from MukeshRobot import pbot
 from pyrogram.errors.exceptions.flood_420 import FloodWait
 
 from MukeshRobot.modules.help import add_command_help
