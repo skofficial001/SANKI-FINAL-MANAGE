@@ -1,164 +1,82 @@
-"""MIT License
+"""Evaluate Python Code inside Telegram
+Syntax: .eval PythonCode"""
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-Copyright (c) 2023-24 Noob-Mukesh
-
-          GITHUB: NOOB-MUKESH
-          TELEGRAM: @MR_SUKKUN
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE."""
 import io
-import os
-
-# Common imports for eval
-import textwrap
+import sys
 import traceback
-from contextlib import redirect_stdout
 
-from telegram import ParseMode, Update
-from telegram.ext import CallbackContext, CommandHandler
+from uniborg.util import edit_or_reply, fire_on_cmd, sudo_cmd
 
-from MukeshRobot import LOGGER, dispatcher,OWNER_ID
-from MukeshRobot.modules.helper_funcs.chat_status import dev_plus
-
-namespaces = {}
+from firebot import CMD_HELP
 
 
-def namespace_of(chat, update, bot):
-    if chat not in namespaces:
-        namespaces[chat] = {
-            "__builtins__": globals()["__builtins__"],
-            "bot": bot,
-            "effective_message": update.effective_message,
-            "effective_user": update.effective_user,
-            "effective_chat": update.effective_chat,
-            "update": update,
-        }
+@fire.on(fire_on_cmd("eval"))
+@fire.on(sudo_cmd("eval", allow_sudo=True))
+async def _(event):
+    if event.fwd_from:
+        return
+    await edit_or_reply(event, "Processing ...")
+    cmd = event.text.split(" ", maxsplit=1)[1]
+    reply_to_id = event.message.id
+    if event.reply_to_msg_id:
+        reply_to_id = event.reply_to_msg_id
 
-    return namespaces[chat]
-
-
-def log_input(update):
-    user = update.effective_user.id
-    chat = update.effective_chat.id
-   # LOGGER.info(f"IN: {update.effective_message.text} (user={user}, chat={chat})")
-
-
-def send(msg, bot, update):
-    if len(str(msg)) > 2000:
-        with io.BytesIO(str.encode(msg)) as out_file:
-            out_file.name = "output.txt"
-            bot.send_document(chat_id=update.effective_chat.id, document=out_file)
-    else:
-        #LOGGER.info(f"OUT: '{msg}'")
-        bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=f"`{msg}`",
-            parse_mode=ParseMode.MARKDOWN,
-        )
-
-
-@dev_plus
-def evaluate(update: Update, context: CallbackContext):
-    bot = context.bot
-    send(do(eval, bot, update), bot, update)
-
-
-@dev_plus
-def execute(update: Update, context: CallbackContext):
-    bot = context.bot
-    send(do(exec, bot, update), bot, update)
-
-
-def cleanup_code(code):
-    if code.startswith("```") and code.endswith("```"):
-        return "\n".join(code.split("\n")[1:-1])
-    return code.strip("` \n")
-
-
-def do(func, bot, update):
-    log_input(update)
-    content = update.message.text.split(" ", 1)[-1]
-    body = cleanup_code(content)
-    env = namespace_of(update.message.chat_id, update, bot)
-
-    os.chdir(os.getcwd())
-    with open(
-        os.path.join(os.getcwd(), "MukeshRobot/modules/helper_funcs/temp.txt"), "w"
-    ) as temp:
-        temp.write(body)
-
-    stdout = io.StringIO()
-
-    to_compile = f'def func():\n{textwrap.indent(body, "  ")}'
+    old_stderr = sys.stderr
+    old_stdout = sys.stdout
+    redirected_output = sys.stdout = io.StringIO()
+    redirected_error = sys.stderr = io.StringIO()
+    stdout, stderr, exc = None, None, None
 
     try:
-        exec(to_compile, env)
-    except Exception as e:
-        return f"{e.__class__.__name__}: {e}"
-
-    func = env["func"]
-
-    try:
-        with redirect_stdout(stdout):
-            func_return = func()
+        await aexec(cmd, event)
     except Exception:
-        value = stdout.getvalue()
-        return f"{value}{traceback.format_exc()}"
+        exc = traceback.format_exc()
+
+    stdout = redirected_output.getvalue()
+    stderr = redirected_error.getvalue()
+    sys.stdout = old_stdout
+    sys.stderr = old_stderr
+
+    evaluation = ""
+    if exc:
+        evaluation = exc
+    elif stderr:
+        evaluation = stderr
+    elif stdout:
+        evaluation = stdout
     else:
-        value = stdout.getvalue()
-        result = None
-        if func_return is None:
-            if value:
-                result = f"{value}"
-            else:
-                try:
-                    result = f"{repr(eval(body, env))}"
-                except:
-                    pass
-        else:
-            result = f"{value}{func_return}"
-        if result:
-            return result
+        evaluation = "Success"
+
+    final_output = "**EVAL**: `{}` \n\n **OUTPUT**: \n`{}` \n".format(cmd, evaluation)
+
+    if len(final_output) > Config.MAX_MESSAGE_SIZE_LIMIT:
+        with io.BytesIO(str.encode(final_output)) as out_file:
+            out_file.name = "eval.text"
+            await borg.send_file(
+                event.chat_id,
+                out_file,
+                force_document=True,
+                allow_cache=False,
+                caption=cmd,
+                reply_to=reply_to_id,
+            )
+            await event.delete()
+    else:
+        await edit_or_reply(event, final_output)
 
 
-@dev_plus
-def clear(update: Update, context: CallbackContext):
-    bot = context.bot
-    log_input(update)
-    global namespaces
-    if update.message.chat_id in namespaces:
-        del namespaces[update.message.chat_id]
-    send("Cleared locals.", bot, update)
+async def aexec(code, event):
+    exec(f"async def __aexec(event): " + "".join(f"\n {l}" for l in code.split("\n")))
+    return await locals()["__aexec"](event)
 
 
-EVAL_HANDLER = CommandHandler(("e", "ev", "eva", "eval"), evaluate, run_async=True)
-EXEC_HANDLER = CommandHandler(("x", "ex", "exe", "exec", "py"), execute, run_async=True)
-CLEAR_HANDLER = CommandHandler("clearlocals", clear, run_async=True)
-
-dispatcher.add_handler(EVAL_HANDLER)
-dispatcher.add_handler(EXEC_HANDLER)
-dispatcher.add_handler(CLEAR_HANDLER)
-
-__mod_name__ = "Eᴠᴀʟ"
-__help__ = f"""
-★ᴏᴡɴᴇʀ ᴄᴍᴅ ★
-★ /eval :- to evaluate simple code
-★ /ex :-  to execute code
-★ /clear :- to run clear cmd
-"""
+CMD_HELP.update(
+    {
+        "eval": "**Eval**\
+\n\n**Syntax : **`.eval <python code>`\
+\n**Usage :** Run python code using this plugin."
+    }
+)
