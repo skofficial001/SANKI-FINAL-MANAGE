@@ -1,4 +1,4 @@
-from DAXXROBOT.modules.no_sql import Mukeshdb
+from MukeshRobot.modules.no_sql import Mukeshdb
 
 afkdb = Mukeshdb.afk
 
