@@ -13,8 +13,8 @@ from MukeshRobot.util import edit_or_reply, fire_on_cmd, sudo_cmd
 from MukeshRobot import CMD_HELP
 
 
-@app.on(fire_on_cmd("eval"))
-@fire.on(sudo_cmd("eval", allow_sudo=True))
+@pbot.on(fire_on_cmd("eval"))
+@pbot.on(sudo_cmd("eval", allow_sudo=True))
 async def _(event):
     if event.fwd_from:
         return
