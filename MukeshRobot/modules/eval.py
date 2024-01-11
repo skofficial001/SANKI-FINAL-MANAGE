@@ -33,8 +33,8 @@ from contextlib import redirect_stdout
 from telegram import ParseMode, Update
 from telegram.ext import CallbackContext, CommandHandler
 
-from DAXXROBOT import LOGGER, dispatcher,OWNER_ID
-from DAXXROBOT.modules.helper_funcs.chat_status import dev_plus
+from MukeshRobot import LOGGER, dispatcher,OWNER_ID
+from MukeshRobot.modules.helper_funcs.chat_status import dev_plus
 
 namespaces = {}
 
