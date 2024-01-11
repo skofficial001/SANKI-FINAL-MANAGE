@@ -5,12 +5,19 @@ Syntax: .eval PythonCode"""
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import io
-import sys
+import os
+
+# Common imports for eval
+import textwrap
 import traceback
+from contextlib import redirect_stdout
 
-from MukeshRobot.util import edit_or_reply, fire_on_cmd, sudo_cmd
+from telegram import ParseMode, Update
+from telegram.ext import CallbackContext, CommandHandler
 
-from MukeshRobot import CMD_HELP
+from DAXXROBOT import LOGGER, dispatcher,OWNER_ID
+from DAXXROBOT.modules.helper_funcs.chat_status import dev_plus
+
 
 
 @pbot.on(fire_on_cmd("eval"))
