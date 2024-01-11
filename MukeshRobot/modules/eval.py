@@ -99,7 +99,7 @@ def do(func, bot, update):
 
     os.chdir(os.getcwd())
     with open(
-        os.path.join(os.getcwd(), "DAXXROBOT/modules/helper_funcs/temp.txt"), "w"
+        os.path.join(os.getcwd(), "MukeshRobot/modules/helper_funcs/temp.txt"), "w"
     ) as temp:
         temp.write(body)
 
