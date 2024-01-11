@@ -8,12 +8,12 @@ import io
 import sys
 import traceback
 
-from uniborg.util import edit_or_reply, fire_on_cmd, sudo_cmd
+from MukeshRobot.util import edit_or_reply, fire_on_cmd, sudo_cmd
 
-from firebot import CMD_HELP
+from MukeshRobot import CMD_HELP
 
 
-@fire.on(fire_on_cmd("eval"))
+@app.on(fire_on_cmd("eval"))
 @fire.on(sudo_cmd("eval", allow_sudo=True))
 async def _(event):
     if event.fwd_from:
